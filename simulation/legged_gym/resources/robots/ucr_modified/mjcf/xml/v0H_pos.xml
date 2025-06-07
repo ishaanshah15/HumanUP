@@ -1,0 +1,41 @@
+<mujoco model="v0H">    
+  <include file="v0H_base.xml"/>
+
+  <!-- Use breadth first order to match isaac gym-->
+  <actuator>
+    <position class="A900" name='leftHipYaw' joint='leftHipYaw' kp="300" kv="10"/>
+    <position class="A900" name='rightHipYaw' joint='rightHipYaw' kp="300" kv="10"/>
+    <position class="A900" name='torsoYaw' joint='torsoYaw' kp="200" kv="6"/>
+
+    <position class="D110a" name='leftHipRoll' joint='leftHipRoll' kp="300" kv="10"/>
+    <position class="D110a" name='rightHipRoll' joint='rightHipRoll' kp="300" kv="10"/>
+    <!-- Parallel drive -->
+    <position class="A900" name='torsoPitch' joint='torsoPitch' kp="300" kv="10" forcerange="-140 140"/>
+
+    <position class="D110a" name='leftHipPitch' joint='leftHipPitch' kp="300" kv="10"/>
+    <position class="D110a" name='rightHipPitch' joint='rightHipPitch' kp="300" kv="10" /> 
+    <!-- Parallel drive -->
+    <position class="A900" name='torsoRoll' joint='torsoRoll' kp="300" kv="10" forcerange="-140 140"/>
+
+    <position class="D110a" name='leftKneePitch' joint='leftKneePitch' kp="300" kv="10"/>
+    <position class="D110a" name='rightKneePitch' joint='rightKneePitch' kp="300" kv="10"/>
+
+    <position class="B903" name='leftShoulderPitch' joint='leftShoulderPitch' kp="120" kv="4"/> 
+    <position class="B903" name='rightShoulderPitch' joint='rightShoulderPitch' kp="120" kv="4"/> 
+
+    <position class="D110a" name='leftAnklePitch' joint='leftAnklePitch' kp="300" kv="10"/>
+    <position class="D110a" name='rightAnklePitch' joint='rightAnklePitch' kp="300" kv="10"/>
+
+    <position class="B903" name='leftShoulderRoll' joint='leftShoulderRoll' kp="120" kv="4"/> 
+    <position class="B903" name='rightShoulderRoll' joint='rightShoulderRoll' kp="120" kv="4"/> 
+
+    <position class="A71" name='leftAnkleRoll' joint='leftAnkleRoll' kp="120" kv="4"/>
+    <position class="A71" name='rightAnkleRoll' joint='rightAnkleRoll' kp="120" kv="4"/>
+
+    <position class="C806" name='leftShoulderYaw' joint='leftShoulderYaw' kp="120" kv="4"/> 
+    <position class="C806" name='rightShoulderYaw' joint='rightShoulderYaw' kp="120" kv="4"/> 
+    <position class="C806" name='leftElbow' joint='leftElbow' kp="120" kv="4"/> 
+    <position class="C806" name='rightElbow' joint='rightElbow' kp="120" kv="4"/> 
+  </actuator>
+
+</mujoco>
