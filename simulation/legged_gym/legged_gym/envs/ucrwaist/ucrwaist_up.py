@@ -85,8 +85,31 @@ class V0HHumanoid(Humanoid):
         BaseTask.__init__(self, self.cfg, sim_params, physics_engine, sim_device, headless)
 
         # Initialize root states and DOF positions
-        self.initial_root_states = torch.zeros((self.num_envs, 13), device=self.device)
-        self.initial_dof_pos = torch.zeros((self.num_envs, self.num_dof), device=self.device)
+        # Root state: [x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz]  
+        # Using proper initial pose from configuration
+        base_init_state_list = (
+            self.cfg.init_state.pos +      # [0, 0, 0.95]
+            self.cfg.init_state.rot +      # [0, 0, 0, 1] 
+            self.cfg.init_state.lin_vel +  # [0, 0, 0]
+            self.cfg.init_state.ang_vel     # [0, 0, 0]
+        )
+        self.initial_root_states = torch.tensor(base_init_state_list, device=self.device, dtype=torch.float).repeat(self.num_envs, 1)
+        
+        # Initialize DOF positions based on joint order from config
+        # Order: torso (3), right arm (4), left arm (4), right leg (6), left leg (6) = 23 total
+        initial_dof_pos_list = [
+            # Torso: torsoYaw, torsoPitch, torsoRoll
+            0.0, 0.0, 0.0,
+            # Right arm: rightShoulderPitch, rightShoulderRoll, rightShoulderYaw, rightElbow  
+            0.0, 0.0, 0.0, 0.0,
+            # Left arm: leftShoulderPitch, leftShoulderRoll, leftShoulderYaw, leftElbow
+            0.0, 0.0, 0.0, 0.0,
+            # Right leg: rightHipYaw, rightHipRoll, rightHipPitch, rightKneePitch, rightAnklePitch, rightAnkleRoll
+            0.0, 0.0, -0.1, 0.3, -0.2, 0.0,
+            # Left leg: leftHipYaw, leftHipRoll, leftHipPitch, leftKneePitch, leftAnklePitch, leftAnkleRoll  
+            0.0, 0.0, -0.1, 0.3, -0.2, 0.0
+        ]
+        self.initial_dof_pos = torch.tensor(initial_dof_pos_list, device=self.device, dtype=torch.float).repeat(self.num_envs, 1)
 
         # -----------------------------------------------------------
         #  CORRECTED: v0H joint indices based on actual MJCF ordering
@@ -432,6 +455,51 @@ class V0HHumanoid(Humanoid):
         return props
 
 
+    def _update_standing_prob_curriculum(self):
+        # [Curriculum] Update the standing probability based on the curriculum type
+        assert self.cfg.rewards.standing_scale_curriculum_type in ["sin", "step_height", "step", "cos"]
+        if self.cfg.rewards.standing_scale_curriculum_type == "sin":
+            # Sine wave curriculum, the standing probability will change from 0 to 1 and back to 0 in a cycle
+            iteration = self.total_env_steps_counter // 24
+            cycle_iteration = iteration % self.cfg.rewards.standing_scale_curriculum_iterations
+            sin_progress = (cycle_iteration / self.cfg.rewards.standing_scale_curriculum_iterations) * torch.pi
+            self.cfg.rewards.standing_scale = self.cfg.rewards.standing_scale_range[0] + (
+                self.cfg.rewards.standing_scale_range[1] - self.cfg.rewards.standing_scale_range[0]
+            ) * torch.sin(torch.tensor(sin_progress).to(self.device))
+            self.standing_init_prob = self.cfg.rewards.standing_scale.clamp(0.0, 1.0)
+        elif self.cfg.rewards.standing_scale_curriculum_type == "cos":
+            # Cosine annealing curriculum, the standing probability will decrease from 1 to 0
+            iteration = self.total_env_steps_counter // 24
+            cycle_iteration = iteration % self.cfg.rewards.standing_scale_curriculum_iterations
+            cos_progress = (cycle_iteration / self.cfg.rewards.standing_scale_curriculum_iterations) * torch.pi / 2.0
+            self.cfg.rewards.standing_scale = self.cfg.rewards.standing_scale_range[0] + (
+                self.cfg.rewards.standing_scale_range[1] - self.cfg.rewards.standing_scale_range[0]
+            ) * torch.cos(torch.tensor(cos_progress).to(self.device)).clamp(0.0, 1.0)
+            self.standing_init_prob = self.cfg.rewards.standing_scale
+        elif self.cfg.rewards.standing_scale_curriculum_type == "step_height":
+            # Step height curriculum, the standing probability will change based on the average termination height of all envs
+            # NOTE: This is an inversed version of regularization scale curriculum in step_height - Runpei
+            if torch.mean(self.termination_height).item() > 0.65:
+                # drease the regularization scale
+                self.standing_init_prob *= (
+                    1.0 - self.cfg.rewards.standing_scale_gamma
+                )
+            elif torch.mean(self.termination_height).item() < 0.1:
+                # increase the regularization scale
+                self.standing_init_prob *= (
+                    1.0 + self.cfg.rewards.standing_scale_gamma
+                )
+            self.standing_init_prob = max(
+                min(
+                    self.standing_init_prob,
+                    self.cfg.rewards.standing_scale_range[1],
+                ),
+                self.cfg.rewards.standing_scale_range[0],
+            )
+        elif self.cfg.rewards.standing_scale_curriculum_step:
+            # TODO: implement step curriculum - Runpei
+            raise NotImplementedError
+
     def _reset_dofs(self, env_ids, dof_pos=None, dof_vel=None, set_act: bool = True):
         """
         Reset all DOF-positions (and possibly small randomization).
@@ -523,7 +591,7 @@ class V0HHumanoid(Humanoid):
             len(env_ids_int32),
         )
 
-    """
+        """
         Same as G1’s cosine/sine/step curriculum on “standing_init_prob.”
         """
         assert self.cfg.rewards.standing_scale_curriculum_type in ["sin", "step_height", "cos"]
@@ -830,6 +898,8 @@ class V0HHumanoid(Humanoid):
         Exactly the same concatenation logic as G1.  v0H’s index‐order is already
         mapped via self.left_dof_indices etc., so no changes here.
         """
+        
+
         imu_obs = torch.stack((self.roll, self.pitch), dim=1)
         self.base_yaw_quat = quat_from_euler_xyz(0 * self.yaw, 0 * self.yaw, self.yaw)
 
@@ -875,6 +945,7 @@ class V0HHumanoid(Humanoid):
             [obs_buf, priv_latent, self.obs_history_buf.view(self.num_envs, -1)],
             dim=-1
         )
+        
         
         # Check for NaN values and print debug info
         nan_mask = torch.isnan(self.obs_buf)

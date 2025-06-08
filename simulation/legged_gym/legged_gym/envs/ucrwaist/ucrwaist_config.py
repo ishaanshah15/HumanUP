@@ -56,7 +56,7 @@ class V0HHumanoidCfg(HumanoidCfg):
         history_encoding = True
         contact_buf_len = 10
 
-        normalize_obs = False
+        normalize_obs = True
 
         terminate_on_velocity = True
         terminate_on_height = True
