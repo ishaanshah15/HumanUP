@@ -39,6 +39,8 @@ from .base.humanoid import Humanoid
 # G1 with waist dof
 from .g1waist.g1waist_up_config import G1WaistHumanUPCfg, G1WaistHumanUPCfgPPO
 from .g1waist.g1waist_up import G1WaistHumanUP
+from .ucrwaist.ucrwaist_config import V0HHumanoidCfg, V0HHumanoidCfgPPO
+from .ucrwaist.ucrwaist_up import V0HHumanoid
 from .g1waistroll.g1waistroll_up_config import G1WaistRollHumanUPCfg, G1WaistRollHumanUPCfgPPO
 from .g1waistroll.g1waistroll_up import G1WaistRollHumanUP
 
@@ -59,3 +61,5 @@ task_registry.register("g1waist_track", G1WaistTrack, G1WaistTrackCfg(), G1Waist
 task_registry.register("g1waistroll_up", G1WaistRollHumanUP, G1WaistRollHumanUPCfg(), G1WaistRollHumanUPCfgPPO())
 
 task_registry.register("g1waistroll_track", G1WaistRollTrack, G1WaistRollTrackCfg(), G1WaistRollTrackCfgPPO())
+
+task_registry.register("ucrwaist_up", V0HHumanoid, V0HHumanoidCfg(), V0HHumanoidCfgPPO())
