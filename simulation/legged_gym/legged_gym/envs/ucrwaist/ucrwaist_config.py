@@ -68,7 +68,7 @@ class V0HHumanoidCfg(HumanoidCfg):
 
     class init_state(HumanoidCfg.init_state):
         # starting position (z = 0.95 m above ground to match v0H’s pelvis pos)
-        pos = [0, 0, 0.95]
+        pos = [0, 0, 0.2]
         default_joint_angles = {
         # Order matches MJCF action space exactly:
         # Index 0-2: Torso
@@ -91,17 +91,17 @@ class V0HHumanoidCfg(HumanoidCfg):
         # Index 11-16: Right leg
         "rightHipYaw": 0.0,
         "rightHipRoll": 0.0,
-        "rightHipPitch": -0.1,
-        "rightKneePitch": 0.3,
-        "rightAnklePitch": -0.2,
+        "rightHipPitch": 0.0,
+        "rightKneePitch": 0.0,
+        "rightAnklePitch": 0.0,
         "rightAnkleRoll": 0.0,
         
         # Index 17-22: Left leg
         "leftHipYaw": 0.0,
         "leftHipRoll": 0.0,
-        "leftHipPitch": -0.1,
-        "leftKneePitch": 0.3,
-        "leftAnklePitch": -0.2,
+        "leftHipPitch": 0.0,
+        "leftKneePitch": 0.0,
+        "leftAnklePitch": 0.0,
         "leftAnkleRoll": 0.0,
     }
 
@@ -175,6 +175,7 @@ class V0HHumanoidCfg(HumanoidCfg):
         penalize_contacts_on = []  
         terminate_after_contacts_on = []  
         dof_armature = [0.0] * 23  # can be tuned if needed
+        
 
     class rewards(HumanoidCfg.rewards):
         regularization_names = [
