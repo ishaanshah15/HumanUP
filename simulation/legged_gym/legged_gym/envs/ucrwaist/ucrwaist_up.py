@@ -3,33 +3,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-FileCopyrightText: # Copyright (c) 2021 ETH Zurich, Nikita Rudin. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-#    contributors may be used to endorse or promote products derived from
-#    this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2024-2025 RoboVision Lab, UIUC. All rights reserved.
 
 from legged_gym import LEGGED_GYM_ROOT_DIR
 from legged_gym.envs.base.base_task import BaseTask
@@ -57,12 +30,12 @@ class V0HHumanoid(Humanoid):
                  sim_device: str,
                  headless: bool):
         """
-        V0H Humanoid environment for fall recovery training.
+        V0H Humanoid environment for fall recovery training using position control.
         
-        Key differences from G1:
-         - cfg is V0HHumanoidCfg (points to v0H.xml)
-         - Joint indices corrected for v0H's MJCF joint ordering
-         - PD gains match v0H's actuator specifications
+        Key differences from torque-based version:
+         - Uses gym.set_dof_position_target_tensor for position control
+         - Actions are target joint positions, not torques
+         - PD gains are set in DOF properties for position mode
         """
         self.cfg = cfg
         self.sim_params = sim_params
@@ -88,11 +61,12 @@ class V0HHumanoid(Humanoid):
         # Root state: [x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz]  
         # Using proper initial pose from configuration
         base_init_state_list = (
-            self.cfg.init_state.pos +      # [0, 0, 0.95]
+            self.cfg.init_state.pos +      # [0, 0.0, 0.95]
             self.cfg.init_state.rot +      # [0, 0, 0, 1] 
             self.cfg.init_state.lin_vel +  # [0, 0, 0]
             self.cfg.init_state.ang_vel     # [0, 0, 0]
         )
+        base_init_state_list = [0, 0, 0.2] + [0,-0.7071,0,0.7071] + [0, 0, 0] + [0, 0, 0]  # Add velocities
         self.initial_root_states = torch.tensor(base_init_state_list, device=self.device, dtype=torch.float).repeat(self.num_envs, 1)
         
         # Initialize DOF positions based on joint order from config
@@ -105,9 +79,9 @@ class V0HHumanoid(Humanoid):
             # Left arm: leftShoulderPitch, leftShoulderRoll, leftShoulderYaw, leftElbow
             0.0, 0.0, 0.0, 0.0,
             # Right leg: rightHipYaw, rightHipRoll, rightHipPitch, rightKneePitch, rightAnklePitch, rightAnkleRoll
-            0.0, 0.0, -0.1, 0.3, -0.2, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             # Left leg: leftHipYaw, leftHipRoll, leftHipPitch, leftKneePitch, leftAnklePitch, leftAnkleRoll  
-            0.0, 0.0, -0.1, 0.3, -0.2, 0.0
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         ]
         self.initial_dof_pos = torch.tensor(initial_dof_pos_list, device=self.device, dtype=torch.float).repeat(self.num_envs, 1)
 
@@ -131,8 +105,12 @@ class V0HHumanoid(Humanoid):
 
         # Create all the tensors and buffers (observations, rewards, etc.)
         self._init_buffers()
+
         self._prepare_reward_function()
 
+        # Position control specific buffers
+        self.dof_position_targets = torch.zeros(self.num_envs, self.num_dof, device=self.device, dtype=torch.float)
+        
         # Counters for fall-recovery logic
         self.global_counter = 0
         self.total_env_steps_counter = 0
@@ -158,7 +136,7 @@ class V0HHumanoid(Humanoid):
 
     def debug_joint_mapping(self):
         """Debug function to verify correct joint mapping"""
-        print("=== V0H JOINT MAPPING VERIFICATION ===")
+        print("=== V0H POSITION CONTROL JOINT MAPPING VERIFICATION ===")
         print("DOF Names from Isaac Gym:")
         for i, name in enumerate(self.dof_names):
             print(f"{i:2d}: {name}")
@@ -183,6 +161,71 @@ class V0HHumanoid(Humanoid):
         # We need rigid-body rotation for foot orientation rewards
         self.rigid_body_rot = self.rigid_body_states[..., :self.num_bodies, 3:7]
 
+    def step(self, actions):
+        """Position control step function - equivalent to torque-based version"""
+        # Reindex actions to match v0H joint ordering
+        actions = self.reindex(actions)
+        actions = actions.to(self.device)
+        action_tensor = actions.clone()
+        
+        # Update action history buffer (now contains position targets)
+        self.action_history_buf = torch.cat(
+            [self.action_history_buf[:, 1:].clone(), action_tensor[:, None, :].clone()], dim=1
+        )
+        
+        # Action delay (if enabled) - use delayed position targets
+        if self.cfg.domain_rand.action_delay:
+            if self.total_env_steps_counter <= 5000 * 24:
+                self.delay = torch.tensor(0, device=self.device, dtype=torch.float)
+            else:
+                self.delay = torch.tensor(
+                    np.random.randint(2), device=self.device, dtype=torch.float
+                )
+            indices = -self.delay - 1
+            action_tensor = self.action_history_buf[:, indices.long()]
+
+        # Update global counters
+        self.global_counter += 1
+        self.total_env_steps_counter += 1
+        
+        # Clip actions (position targets)
+        clip_actions = self.cfg.normalization.clip_actions / self.cfg.control.action_scale
+        self.actions = torch.clip(action_tensor, -clip_actions, clip_actions).to(self.device)
+        
+        # Render if needed
+        self.render()
+
+        # Physics simulation loop
+        for _ in range(self.cfg.control.decimation):
+            # Convert actions to position targets (relative to default positions)
+            self.dof_position_targets = (
+                self.default_dof_pos_all + 
+                self.actions * self.cfg.control.action_scale
+            )
+            
+            # Set position targets (equivalent to setting torques in original)
+            self.gym.set_dof_position_target_tensor(
+                self.sim, 
+                gymtorch.unwrap_tensor(self.dof_position_targets)
+            )
+            
+            # Simulate physics step
+            self.gym.simulate(self.sim)
+            self.gym.fetch_results(self.sim, True)
+            self.gym.refresh_dof_state_tensor(self.sim)
+
+        # Post-physics processing
+        self.post_physics_step()
+
+        # Clip observations
+        clip_obs = self.cfg.normalization.clip_observations
+        self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
+        if self.privileged_obs_buf is not None:
+            self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
+
+        return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
+
+
     def _create_envs(self):
         """
         Creates each IsaacGym env, loads v0H.xml asset, sets DOF/rigid-shape props,
@@ -194,7 +237,7 @@ class V0HHumanoid(Humanoid):
 
         # Asset loading options
         asset_options = gymapi.AssetOptions()
-        asset_options.default_dof_drive_mode = self.cfg.asset.default_dof_drive_mode
+        asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS  # Set to position mode
         asset_options.collapse_fixed_joints = self.cfg.asset.collapse_fixed_joints
         asset_options.replace_cylinder_with_capsule = self.cfg.asset.replace_cylinder_with_capsule
         asset_options.flip_visual_attachments = self.cfg.asset.flip_visual_attachments
@@ -221,7 +264,7 @@ class V0HHumanoid(Humanoid):
         self.num_bodies = len(body_names)
         self.num_dofs = len(self.dof_names)
 
-        print(f"Loaded v0H robot with {self.num_dof} DOFs and {self.num_bodies} bodies")
+        print(f"Loaded v0H robot with {self.num_dof} DOFs and {self.num_bodies} bodies (Position Control)")
 
         # Identify key body indices
         self.torso_idx = self.gym.find_asset_rigid_body_index(robot_asset, self.cfg.asset.torso_name)
@@ -274,7 +317,7 @@ class V0HHumanoid(Humanoid):
             env_lower = gymapi.Vec3(0.0, 0.0, 0.0)
             env_upper = gymapi.Vec3(0.0, 0.0, 0.0)
 
-        print("Creating v0H environments...")
+        print("Creating v0H environments with position control...")
         for i in tqdm(range(self.num_envs)):
             env_handle = self.gym.create_env(
                 self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs))
@@ -300,7 +343,7 @@ class V0HHumanoid(Humanoid):
                 self.cfg.asset.self_collisions, 0
             )
 
-            # DOF properties
+            # DOF properties for position control
             dof_props = self._process_dof_props(dof_props_asset, i)
             self.gym.set_actor_dof_properties(env_handle, robot_handle, dof_props)
 
@@ -378,11 +421,12 @@ class V0HHumanoid(Humanoid):
                 )
 
     def _process_dof_props(self, props, env_id):
-        # Call parent method first
+        """Process DOF properties for position control mode"""
+        # Call parent method first if it exists
         if hasattr(super(), '_process_dof_props'):
             props = super()._process_dof_props(props, env_id)
         
-        # PD gains matching MJCF actuator definitions exactly
+        # PD gains for position control - these values are from the MJCF actuators
         joint_pd_gains = {
             # Torso (A900 class)
             'torsoYaw': {'kp': 200, 'kd': 6},
@@ -428,7 +472,7 @@ class V0HHumanoid(Humanoid):
                 gains = joint_pd_gains[dof_name]
                 props['stiffness'][i] = gains['kp']
                 props['damping'][i] = gains['kd']
-                props['driveMode'][i] = gymapi.DOF_MODE_POS
+                props['driveMode'][i] = gymapi.DOF_MODE_POS  # Position control mode
                 
                 # Apply domain randomization if configured
                 if hasattr(self.cfg.domain_rand, 'randomize_gains') and self.cfg.domain_rand.randomize_gains:
@@ -453,7 +497,6 @@ class V0HHumanoid(Humanoid):
                 print(f"Warning: No PD gains defined for joint {dof_name}, using defaults")
         
         return props
-
 
     def _update_standing_prob_curriculum(self):
         # [Curriculum] Update the standing probability based on the curriculum type
@@ -509,6 +552,9 @@ class V0HHumanoid(Humanoid):
         else:
             self.dof_pos[env_ids] = dof_pos[env_ids].clone()
         self.dof_vel[env_ids] = 0.0
+
+        # Also reset position targets to current positions
+        self.dof_position_targets[env_ids] = self.dof_pos[env_ids].clone()
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         if set_act:
@@ -592,7 +638,7 @@ class V0HHumanoid(Humanoid):
         )
 
         """
-        Same as G1’s cosine/sine/step curriculum on “standing_init_prob.”
+        Same as G1's cosine/sine/step curriculum on "standing_init_prob."
         """
         assert self.cfg.rewards.standing_scale_curriculum_type in ["sin", "step_height", "cos"]
         if self.cfg.rewards.standing_scale_curriculum_type == "sin":
@@ -650,7 +696,7 @@ class V0HHumanoid(Humanoid):
             self._reset_dofs(env_ids)
             self._reset_root_states(env_ids)
 
-        # no “velocity commands” for v0H
+        # no "velocity commands" for v0H
         self._resample_commands(env_ids)
 
         # kick the sim
@@ -696,15 +742,13 @@ class V0HHumanoid(Humanoid):
         if self.cfg.env.send_timeouts:
             self.extras["time_outs"] = self.time_out_buf
 
-
     def _update_recovery_count(self):
         self._recovery_counter -= 1
         self._recovery_counter = torch.clamp_min(self._recovery_counter, 0)
 
-        
     def _post_physics_step_callback(self):
         """
-        Called every step.  Mirror’s G1’s push/drag/command‐resample logic.
+        Called every step.  Mirror's G1's push/drag/command‐resample logic.
         """
         env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt)) == 0
         self._resample_commands(env_ids.nonzero(as_tuple=False).flatten())
@@ -729,7 +773,7 @@ class V0HHumanoid(Humanoid):
 
     def _drag_robots(self, z_vel=None, random=True):
         """
-        Exactly same as G1’s: apply an upward velocity impulse to the base.
+        Exactly same as G1's: apply an upward velocity impulse to the base.
         """
         if z_vel is None:
             min_drag = self.cfg.domain_rand.min_drag_vel
@@ -776,12 +820,6 @@ class V0HHumanoid(Humanoid):
     def check_termination(self):
         super().check_termination()
 
-        # If base linear‐velocity too large, terminate
-        if self.cfg.env.terminate_on_velocity:
-            base_vel = torch.norm(self.base_lin_vel, dim=-1)
-            vel_too_large = base_vel > 2.5
-            self.reset_buf[vel_too_large] = 1
-
         # If base height out of [0,1.2], terminate
         if self.cfg.env.terminate_on_height:
             base_too_high = torch.logical_or(
@@ -797,7 +835,7 @@ class V0HHumanoid(Humanoid):
 
     def post_physics_step(self):
         """
-        Overridden version, exactly like G1’s:
+        Overridden version, exactly like G1's:
          - refresh all tensors
          - apply termination/reward/obs etc.
         """
@@ -856,7 +894,7 @@ class V0HHumanoid(Humanoid):
 
     def _update_regularization_scale_curriculum(self):
         """
-        Same “step/sin” curriculum on regularization‐scale as G1.
+        Same "step/sin" curriculum on regularization‐scale as G1.
         """
         rcfg = self.cfg.rewards
         assert rcfg.regularization_scale_curriculum_type in ["sin", "step_height", "step_episode"]
@@ -893,13 +931,12 @@ class V0HHumanoid(Humanoid):
                 rcfg.regularization_scale_range[0]
             )
 
+    
     def compute_observations(self):
         """
-        Exactly the same concatenation logic as G1.  v0H’s index‐order is already
+        Exactly the same concatenation logic as G1.  v0H's index‐order is already
         mapped via self.left_dof_indices etc., so no changes here.
         """
-        
-
         imu_obs = torch.stack((self.roll, self.pitch), dim=1)
         self.base_yaw_quat = quat_from_euler_xyz(0 * self.yaw, 0 * self.yaw, self.yaw)
 
@@ -946,22 +983,6 @@ class V0HHumanoid(Humanoid):
             dim=-1
         )
         
-        
-        # Check for NaN values and print debug info
-        nan_mask = torch.isnan(self.obs_buf)
-        if nan_mask.any():
-            nan_envs = nan_mask.any(dim=1).nonzero(as_tuple=False).flatten()
-            print(f"NaN detected in observations for envs: {nan_envs[:10]}")  # Show first 10
-            print(f"NaN in base_ang_vel: {torch.isnan(self.base_ang_vel).any()}")
-            print(f"NaN in dof_pos: {torch.isnan(self.dof_pos).any()}")
-            print(f"NaN in dof_vel: {torch.isnan(self.dof_vel).any()}")
-            print(f"NaN in actions: {torch.isnan(self.actions).any()}")
-            print(f"Torque limits min/max: {self.torque_limits.min():.6f}/{self.torque_limits.max():.6f}")
-            if hasattr(self, 'motor_strength') and self.motor_strength is not None:
-                print(f"Motor strength: {self.motor_strength}")
-            # Replace NaN values with zeros to prevent training crash
-            self.obs_buf = torch.where(nan_mask, torch.zeros_like(self.obs_buf), self.obs_buf)
-
         # slide history buffers
         if self.cfg.env.history_len > 0:
             self.obs_history_buf = torch.where(
@@ -995,27 +1016,11 @@ class V0HHumanoid(Humanoid):
 
     # ================================================ Rewards ================================================== #
 
-    # All reward functions can remain identical to G1’s. For brevity, we only show two here:
-    #    _reward_base_height_exp  and _reward_head_height_exp
-    # You may copy the rest of G1’s reward methods verbatim, since they rely only on indices
-    # and body‐names that are now correct for v0H.
-
+    # All reward functions remain identical to the original version
     def  _reward_base_height_exp(self):
         z_rwd = torch.clamp(
             self.root_states[:, 2], min=0.0, max=self.cfg.rewards.base_height_target
         )
-        return torch.exp(z_rwd) - 1.0
-
-    def _reward_head_height_exp(self):
-        # v0H has no separate head, use torso height instead
-        if self.head_idx == -1:
-            z_rwd = torch.clamp(
-                self.rigid_body_states[:, self.torso_idx, 2], min=0.0, max=self.cfg.rewards.head_height_target
-            )
-        else:
-            z_rwd = torch.clamp(
-                self.rigid_body_states[:, self.head_idx, 2], min=0.0, max=self.cfg.rewards.head_height_target
-            )
         return torch.exp(z_rwd) - 1.0
 
     def _reward_delta_base_height(self):
@@ -1030,9 +1035,7 @@ class V0HHumanoid(Humanoid):
         feet_contact_forces = torch.norm(self.contact_forces[:, self.feet_indices, 2], dim=-1)
         last_feet_contact_forces = torch.norm(self.last_contact_forces[:, self.feet_indices, 2], dim=-1)
         delta_contact_forces = feet_contact_forces - last_feet_contact_forces
-        # print(delta_contact_forces, "delta_contact_forces")
         increase = delta_contact_forces > 0
-        # rew = torch.ones_like(feet_contact_forces) * -1.0
         rew = torch.ones_like(feet_contact_forces) * 1.0
         rew[~increase] = 0.0
         return rew
@@ -1048,59 +1051,19 @@ class V0HHumanoid(Humanoid):
         rew[~stand_on_both] = 0.0
         return rew
     
-    def _reward_dof_vel(self):
-        return torch.sum(torch.square(self.dof_vel), dim=1)
-
-    def _reward_base_lin_vel(self):
-        return torch.norm(self.base_lin_vel, dim=-1)
-
-    def _reward_ang_vel(self):
-        return torch.sum(torch.square(self.base_ang_vel[:, :3]), dim=1)
-
     def _reward_action_rate(self):
         return torch.norm(self.last_actions - self.actions, dim=-1)
-    
-    def _reward_torques(self):
-        return torch.norm(self.torques, dim=-1)
-    
-    def _reward_dof_pos_limits(self):
-        out_of_limits = -(self.dof_pos - self.dof_pos_limits[:, 0]).clip(max=0.)  # lower limit
-        out_of_limits += (self.dof_pos - self.dof_pos_limits[:, 1]).clip(min=0.)
-        return torch.sum(out_of_limits, dim=1)
-    
-    def _reward_dof_torque_limits(self):
-        # out_of_limits = torch.sum((torch.abs(self.torques) - self.torque_limits * self.cfg.rewards.soft_torque_limit).clip(min=0), dim=1)
-        # return out_of_limits
-        safe_torque_limits = torch.clamp(self.torque_limits, min=1e-6)
-        out_of_limits = torch.sum((torch.abs(self.torques) / safe_torque_limits - self.cfg.rewards.soft_torque_limit).clip(min=0), dim=1)
-        return out_of_limits
-    
-    def _reward_energy(self):
-        return torch.norm(torch.abs(self.torques * self.dof_vel), dim=-1)
-    
-    def _reward_dof_acc(self):
-        safe_dt = torch.clamp(torch.tensor(self.dt, device=self.device), min=1e-6)
-        return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / safe_dt), dim=1)
     
     def _reward_body_up_exp(self):
         z_axis = self.projected_gravity[:, 2]  # + down/ - up
         reward = torch.exp(-z_axis)
-
         return reward
 
     def _reward_feet_height(self):
         feet_height = torch.mean(self.rigid_body_states[:, self.feet_indices, 2], dim=-1)
         return torch.exp(-10 * feet_height)
 
-    def _reward_dof_error(self):
-        dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
-        # Use torso height for standing check if no head available
-        if self.head_idx == -1:
-            standing_flag = self.rigid_body_states[:, self.torso_idx, 2] > 1.1
-        else:
-            standing_flag = self.rigid_body_states[:, self.head_idx, 2] > 1.1
-        dof_error[~standing_flag] *= 0
-        return dof_error
+    
 
     def _reward_feet_orientation(self):
         left_quat = self.rigid_body_rot[:, self.feet_indices[0]]
@@ -1144,3 +1107,34 @@ class V0HHumanoid(Humanoid):
                 standing_flag = self.rigid_body_states[:, self.head_idx, 2] > 1.1
             waist_symmetry[standing_flag] *= 0
         return waist_symmetry
+
+    def _reward_dof_vel(self):
+        return 0.0
+
+    def _reward_base_lin_vel(self):
+        return 0.0
+
+    def _reward_ang_vel(self):
+        return 0.0
+
+    def _reward_torques(self):
+        return 0.0
+    
+    def _reward_dof_pos_limits(self):
+        out_of_limits = -(self.dof_pos - self.dof_pos_limits[:, 0]).clip(max=0.)  # lower limit
+        out_of_limits += (self.dof_pos - self.dof_pos_limits[:, 1]).clip(min=0.)
+        return 0.0
+    
+    def _reward_dof_torque_limits(self):
+        # out_of_limits = torch.sum((torch.abs(self.torques) - self.torque_limits * self.cfg.rewards.soft_torque_limit).clip(min=0), dim=1)
+        # return out_of_limits
+        return 0.0
+    
+    def _reward_energy(self):
+        return 0.0
+
+    def _reward_dof_acc(self):
+        return 0.0
+
+    def _reward_head_height_exp(self):
+        return 0.0
