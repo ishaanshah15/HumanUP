@@ -4,6 +4,31 @@
 # SPDX-FileCopyrightText: # Copyright (c) 2021 ETH Zurich, Nikita Rudin. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
 #
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
 # Copyright (c) 2024-2025 RoboVision Lab, UIUC. All rights reserved.
 
 from legged_gym.envs.base.humanoid_config import HumanoidCfg, HumanoidCfgPPO
@@ -12,10 +37,22 @@ class V0HHumanoidCfg(HumanoidCfg):
     class env(HumanoidCfg.env):
         # use the same parallelism as G1
         num_envs = 4096
-        num_actions = 23  # v0H has 23 actuated joints (no wrists)
+        num_actions = 23  # v0H also has 23 actuated joints (no wrists)
         n_priv = 0
-        n_proprio = 3 + 2 + 3 * num_actions  # ang_vel (3) + imu (2) + 3*actions (pos, vel, last_action)
-        n_priv_latent = 4 + 1 + 2 * num_actions + 3  # mass (4) + friction (1) + motor_strength (2*23) + base_lin_vel (3)
+        n_proprio = 3 + 2 + 3 * num_actions
+        n_priv_latent = 4 + 1 + 2 * num_actions + 3
+        history_len = 10
+
+        num_observations = n_proprio + n_priv_latent + history_len * n_proprio + n_priv
+        num_privileged_obs = None
+
+        env_spacing = 3.0
+        send_timeouts = True
+        episode_length_s = 4
+
+        randomize_start_pos = False
+        randomize_start_yaw = False
+
         history_encoding = True
         contact_buf_len = 10
 
@@ -30,46 +67,45 @@ class V0HHumanoidCfg(HumanoidCfg):
         mesh_type = "plane"
 
     class init_state(HumanoidCfg.init_state):
-        # starting position (z = 0.95 m above ground to match v0H's pelvis pos)
-        pos = [0, 0, 0.95]
+        # starting position (z = 0.95 m above ground to match v0H’s pelvis pos)
+        pos = [0, 0, 0.2]
         default_joint_angles = {
-            # Order matches V0H MuJoCo actuator order exactly:
-            # Index 0-2: Torso
-            "torsoYaw": 0.0,
-            "torsoPitch": 0.0,
-            "torsoRoll": 0.0,
-            
-            # Index 3-6: Right arm
-            "rightShoulderPitch": 0.0,
-            "rightShoulderRoll": 0.0,
-            "rightShoulderYaw": 0.0,
-            "rightElbow": 0.0,
-            
-            # Index 7-10: Left arm  
-            "leftShoulderPitch": 0.0,
-            "leftShoulderRoll": 0.0,
-            "leftShoulderYaw": 0.0,
-            "leftElbow": 0.0,
-            
-            # Index 11-16: Right leg
-            "rightHipYaw": 0.0,
-            "rightHipRoll": 0.0,
-            "rightHipPitch": -0.2,
-            "rightKneePitch": 0.4,
-            "rightAnklePitch": -0.2,
-            "rightAnkleRoll": 0.0,
-            
-            # Index 17-22: Left leg
-            "leftHipYaw": 0.0,
-            "leftHipRoll": 0.0,
-            "leftHipPitch": -0.2,
-            "leftKneePitch": 0.4,
-            "leftAnklePitch": -0.2,
-            "leftAnkleRoll": 0.0,
-        }
+        # Order matches MJCF action space exactly:
+        # Index 0-2: Torso
+        "torsoYaw": 0.0,
+        "torsoPitch": 0.0,
+        "torsoRoll": 0.0,
+        
+        # Index 3-6: Right arm
+        "rightShoulderPitch": 0.0,
+        "rightShoulderRoll": 0.0,
+        "rightShoulderYaw": 0.0,
+        "rightElbow": 0.0,
+        
+        # Index 7-10: Left arm  
+        "leftShoulderPitch": 0.0,
+        "leftShoulderRoll": 0.0,
+        "leftShoulderYaw": 0.0,
+        "leftElbow": 0.0,
+        
+        # Index 11-16: Right leg
+        "rightHipYaw": 0.0,
+        "rightHipRoll": 0.0,
+        "rightHipPitch": 0.0,
+        "rightKneePitch": 0.0,
+        "rightAnklePitch": 0.0,
+        "rightAnkleRoll": 0.0,
+        
+        # Index 17-22: Left leg
+        "leftHipYaw": 0.0,
+        "leftHipRoll": 0.0,
+        "leftHipPitch": 0.0,
+        "leftKneePitch": 0.0,
+        "leftAnklePitch": 0.0,
+        "leftAnkleRoll": 0.0,
+    }
 
     class control(HumanoidCfg.control):
-        # Stiffness values adapted from MuJoCo model's motor configurations
         stiffness = {
             "HipYaw": 300,
             "torsoYaw": 200,
@@ -100,59 +136,60 @@ class V0HHumanoidCfg(HumanoidCfg):
             "ShoulderYaw": 6,
             "Elbow": 5
         }
-        action_scale = 1.0  # Adjusted for V0H's torque control
-        decimation = 5      # Match MuJoCo timestep (0.001 * 5 = 0.005s control freq)
+        action_scale = 2.0
+        decimation = 5
 
     class sim(HumanoidCfg.sim):
-        dt = 0.001  # Match MuJoCo timestep
+        dt = 0.001
         gravity = [0, 0, -9.81]
 
     class normalization(HumanoidCfg.normalization):
         clip_actions = 5
 
     class asset(HumanoidCfg.asset):
-        # Point to your V0H MJCF file
-        file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/ucr_modified/mjcf/xml/v0H_position.xml"
+        # point this to your v0H MJCF (or URDF if you converted it)
+        file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/ucr_modified/mjcf/xml/v0H_merged.xml"
 
-        # V0H's main body names (from MuJoCo model)
-        torso_name: str = "torso"            # the actual "torso" mesh body
-        chest_name: str = "torso"            # chest and torso are the same link
-        forehead_name: str = "torso"         # V0H has no separate head, use torso
+        # v0H’s main “base” bodies/links:
+        torso_name: str = "torso"            # the actual “torso” mesh body
+        chest_name: str = "torso"            # chest and torso collapse to the same link
+        forehead_name: str = None            # v0H has no separate “head” collision or joint
 
-        waist_name: str = "torsoYawLink"     # V0H's trunk yaw joint
+        waist_name: str = "torsoYawLink"     # v0H’s trunk yaw joint
 
-        # Lower-body link names
-        thigh_name: str = "HipRollLink"      # any "HipRollLink" denotes the thigh segment
-        shank_name: str = "KneePitchLink"    # the "knee"-pitch link
-        foot_name: str = "Foot"              # the final foot body
+        # Lower‐body link names (we pick the “roll” link as thigh)
+        thigh_name: str = "rightHipRollLink"  # any “HipRollLink” will denote the thigh segment
+        shank_name: str = "rightKneePitchLink"  # the “knee”‐pitch link
+        foot_name: str = "rightFoot"          # the final foot body containing the full mesh
 
-        # Upper-body link names
-        upper_arm_name: str = "ShoulderRollLink"
-        lower_arm_name: str = "ElbowLink"
-        hand_name: str = None                # V0H uses no wrist or hand meshes
+        # Upper‐body link names
+        upper_arm_name: str = "rightShoulderRollLink"
+        lower_arm_name: str = "rightElbowLink"
+        hand_name: str = None                 # v0H uses no wrist or hand meshes separately
 
-        # Joint naming conventions (must match V0H's <joint name="…"> tags)
+        # Joint naming conventions (must match v0H’s <joint name="…"> tags)
         hip_name: str = "Hip"
-        hip_roll_name: str = "HipRoll"
-        hip_yaw_name: str = "HipYaw"
-        hip_pitch_name: str = "HipPitch"
-        knee_name: str = "KneePitch"
-        ankle_name: str = "AnkleRoll"
-        ankle_pitch_name: str = "AnklePitch"
+        hip_roll_name: str = "rightHipRoll"
+        hip_yaw_name: str = "rightHipYaw"
+        hip_pitch_name: str = "rightHipPitch"
+        knee_name: str = "rightKneePitch"
+        ankle_name: str = "rightAnkleRoll"
+        ankle_pitch_name: str = "rightAnklePitch"
         shoulder_name: str = "Shoulder"
-        shoulder_pitch_name: str = "ShoulderPitch"
-        shoulder_roll_name: str = "ShoulderRoll"
-        shoulder_yaw_name: str = "ShoulderYaw"
-        elbow_name: str = "Elbow"
+        shoulder_pitch_name: str = "rightShoulderPitch"
+        shoulder_roll_name: str = "rightShoulderRoll"
+        shoulder_yaw_name: str = "rightShoulderYaw"
+        elbow_name: str = "rightElbow"
 
-        # feet_bodies: these are used for "feet contact" checks
+        # feet_bodies: these are used for “feet contact” checks
         feet_bodies = ["leftFoot", "rightFoot"]
         n_lower_body_dofs: int = 12
 
-        # No contact penalties for V0H (clean up training)
+        # we no longer penalize contacts on torso/shoulder/hip (v0H-specific)
         penalize_contacts_on = []  
         terminate_after_contacts_on = []  
         dof_armature = [0.0] * 23  # can be tuned if needed
+        
 
     class rewards(HumanoidCfg.rewards):
         regularization_names = [
@@ -189,7 +226,7 @@ class V0HHumanoidCfg(HumanoidCfg):
 
         class scales:
             base_height_exp = 5
-            head_height_exp = 5  # Uses torso height for V0H
+            head_height_exp = 5
             delta_base_height = 1
             feet_contact_forces_increase = 1
             stand_on_feet = 2.5
@@ -204,7 +241,7 @@ class V0HHumanoidCfg(HumanoidCfg):
 
             termination = -500
 
-            # smooth rewards
+            # smooth reward
             dof_error = -0.03
             base_lin_vel = -0.1
             ang_vel = -0.1
@@ -216,8 +253,8 @@ class V0HHumanoidCfg(HumanoidCfg):
             energy = -0.0001
             dof_acc = -0.0000001
 
-        base_height_target = 0.95    # V0H pelvis height
-        head_height_target = 1.4     # V0H torso top height (approximate)
+        base_height_target = 0.728   # similar to G1
+        head_height_target = 1.3     # v0H’s head is not modeled, but keep for consistency
         target_feet_height = 0.1
         min_dist = 0.25
         max_dist = 1.0
@@ -232,16 +269,16 @@ class V0HHumanoidCfg(HumanoidCfg):
         max_contact_force = 500
         max_contact_force_head = 250
         max_contact_force_torso = 250
-        termination_height = 0.2  # Lower than G1 due to different robot proportions
+        termination_height = 0.0
 
     class domain_rand:
         drag_robot_up = False
         drag_robot_by_force = True
-        drag_robot_part = "torso"  # drag torso upward (V0H body part)
+        drag_robot_part = "torso"  # drag torso upward (v0H body part)
         drag_force = 1500
         drag_force_curriculum = True
         drag_force_curriculum_type = "sin"
-        drag_force_curriculum_target_height = 0.95
+        drag_force_curriculum_target_height = 0.728
         drag_interval = 50
         drag_when_falling = False
         force_compenstation = False
@@ -271,6 +308,9 @@ class V0HHumanoidCfg(HumanoidCfg):
 
         action_delay = True and domain_rand_general
         action_buf_len = 8
+        randomize_gains = True
+        stiffness_multiplier_range = 0.9  # ±90% variation
+        damping_multiplier_range = 0.3
 
     class noise(HumanoidCfg.noise):
         add_noise = False
@@ -309,7 +349,7 @@ class V0HHumanoidCfgPPO(HumanoidCfgPPO):
         max_iterations = 50001
 
         save_interval = 100
-        experiment_name = "v0H_humanoid"
+        experiment_name = "v0H_test"
         run_name = ""
         resume = False
         load_run = -1
@@ -317,9 +357,8 @@ class V0HHumanoidCfgPPO(HumanoidCfgPPO):
         resume_path = None
 
     class policy(HumanoidCfgPPO.policy):
-        # V0H action standard deviations (23 joints)
-        # [torso(3), right_arm(4), left_arm(4), right_leg(6), left_leg(6)]
-        action_std = [0.2, 0.2, 0.2] + [0.3, 0.3, 0.3, 0.4] * 2 + [0.4, 0.2, 0.4, 0.4, 0.2, 0.2] * 2
+        # same pattern (23 joints, no wrists)
+        action_std = [0.3, 0.3, 0.3, 0.4, 0.2, 0.2] * 2 + [0.1] * 3 + [0.2] * 8
         init_noise_std = 1.0
 
     class algorithm(HumanoidCfgPPO.algorithm):
