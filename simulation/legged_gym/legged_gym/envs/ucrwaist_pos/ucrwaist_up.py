@@ -9,7 +9,7 @@ from legged_gym.envs.base.base_task import BaseTask
 from legged_gym.envs.base.legged_robot import LeggedRobot, euler_from_quaternion
 from legged_gym.envs.base.humanoid import Humanoid
 from legged_gym.envs.g1waist.g1waist_up_config import G1WaistHumanUPCfg  # only for import ordering
-from legged_gym.envs.ucrwaist.ucrwaist_config import V0HHumanoidCfg  # <- your config from previous step
+from legged_gym.envs.ucrwaist_pos.ucrwaist_config import V0HHumanoidCfg  # <- your config from previous step
 
 from isaacgym import gymapi, gymtorch, gymutil
 from isaacgym.torch_utils import *
@@ -162,17 +162,12 @@ class V0HHumanoid(Humanoid):
         self.rigid_body_rot = self.rigid_body_states[..., :self.num_bodies, 3:7]
 
 
-    def wrap_to_pi(x):
-        return (x + torch.pi) % (2*torch.pi) - torch.pi
+    
 
     def step(self, actions):
         """Position control step function - equivalent to torque-based version"""
         # Reindex actions to match v0H joint ordering
 
-        if np.random.rand() < 0.3:
-            print('mean action', actions)
-
-        actions = wrap_to_pi(actions)
         actions = self.reindex(actions)
         actions = actions.to(self.device)
         action_tensor = actions.clone()
@@ -198,7 +193,6 @@ class V0HHumanoid(Humanoid):
         self.total_env_steps_counter += 1
         
         # Clip actions (position targets)
-        import ipdb; ipdb.set_trace()
         clip_actions = self.cfg.normalization.clip_actions / self.cfg.control.action_scale
         self.actions = torch.clip(action_tensor, -3.1, 3.1).to(self.device)
         
@@ -266,7 +260,6 @@ class V0HHumanoid(Humanoid):
         self.num_dof = self.gym.get_asset_dof_count(robot_asset)
         self.num_bodies = self.gym.get_asset_rigid_body_count(robot_asset)
         dof_props_asset = self.gym.get_asset_dof_properties(robot_asset)
-        import ipdb; ipdb.set_trace()
         rigid_shape_props_asset = self.gym.get_asset_rigid_shape_properties(robot_asset)
 
         # Get lists of all body-names and DOF-names

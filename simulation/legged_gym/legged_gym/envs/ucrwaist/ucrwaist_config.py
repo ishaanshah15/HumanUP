@@ -112,7 +112,7 @@ class V0HHumanoidCfg(HumanoidCfg):
 
     class asset(HumanoidCfg.asset):
         # Point to your V0H MJCF file
-        file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/ucr_modified/mjcf/xml/v0H_position.xml"
+        file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/ucr_modified/mjcf/xml/v0H_motor.xml"
 
         # V0H's main body names (from MuJoCo model)
         torso_name: str = "torso"            # the actual "torso" mesh body

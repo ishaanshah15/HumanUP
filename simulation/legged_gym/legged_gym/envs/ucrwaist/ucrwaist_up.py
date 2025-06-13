@@ -29,7 +29,7 @@ from legged_gym.gym_utils.math import quat_apply_yaw, wrap_to_pi, torch_rand_sqr
 from legged_gym.gym_utils.helpers import class_to_dict
 from legged_gym.envs.base.humanoid import Humanoid
 from legged_gym.envs.base.humanoid_config import HumanoidCfg, HumanoidCfgPPO
-from legged_gym.envs.v0h.v0h_config import V0HHumanoidCfg
+from legged_gym.envs.ucrwaist.ucrwaist_config import V0HHumanoidCfg
 
 
 class V0HHumanoid(Humanoid):
@@ -342,14 +342,6 @@ class V0HHumanoid(Humanoid):
             )
 
     # Inherit most methods from the G1 implementation, but adapt specific reward functions
-    
-
-    
-
-    
-
-   
-    
 
     def compute_observations(self):
         imu_obs = torch.stack((self.roll, self.pitch), dim=1)
@@ -459,6 +451,12 @@ class V0HHumanoid(Humanoid):
         rew[~increase] = 0.0
         return rew
 
+    def _reward_energy(self):
+        return torch.norm(torch.abs(self.torques * self.dof_vel), dim=-1)
+    
+    def _reward_dof_acc(self):
+        return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1)
+
     def _reward_stand_on_feet(self):
         # reward for standing on both feet
         contact = torch.norm(self.contact_forces[:, self.feet_indices], dim=-1) > 2.0
@@ -518,5 +516,26 @@ class V0HHumanoid(Humanoid):
             torso_symmetry[standing_flag] *= 0
         return torso_symmetry
 
-    
+    def _reward_dof_vel(self):
+        return torch.sum(torch.square(self.dof_vel), dim=1)
 
+    def _reward_base_lin_vel(self):
+        return torch.norm(self.base_lin_vel, dim=-1)
+
+    def _reward_ang_vel(self):
+        return torch.sum(torch.square(self.base_ang_vel[:, :3]), dim=1)
+
+    def _reward_action_rate(self):
+        return torch.norm(self.last_actions - self.actions, dim=-1)
+    
+    def _reward_torques(self):
+        return torch.norm(self.torques, dim=-1)
+
+    def _reward_dof_pos_limits(self):
+        out_of_limits = -(self.dof_pos - self.dof_pos_limits[:, 0]).clip(max=0.)  # lower limit
+        out_of_limits += (self.dof_pos - self.dof_pos_limits[:, 1]).clip(min=0.)
+        return torch.sum(out_of_limits, dim=1)
+    
+    def _reward_dof_torque_limits(self):
+        out_of_limits = torch.sum((torch.abs(self.torques) - self.torque_limits * self.cfg.rewards.soft_torque_limit).clip(min=0), dim=1)
+        return out_of_limits
