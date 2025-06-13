@@ -16,6 +16,19 @@ class V0HHumanoidCfg(HumanoidCfg):
         n_priv = 0
         n_proprio = 3 + 2 + 3 * num_actions  # ang_vel (3) + imu (2) + 3*actions (pos, vel, last_action)
         n_priv_latent = 4 + 1 + 2 * num_actions + 3  # mass (4) + friction (1) + motor_strength (2*23) + base_lin_vel (3)
+        history_len = 10
+
+        num_observations = n_proprio + n_priv_latent + history_len * n_proprio + n_priv
+
+        num_privileged_obs = None
+
+        env_spacing = 3.0  # not used with heightfields/trimeshes
+        send_timeouts = True  # send time out information to the algorithm
+        episode_length_s = 10
+
+        randomize_start_pos = False
+        randomize_start_yaw = False
+
         history_encoding = True
         contact_buf_len = 10
 
@@ -25,6 +38,7 @@ class V0HHumanoidCfg(HumanoidCfg):
         terminate_on_height = True
 
         no_symmetry_after_stand = True
+
 
     class terrain(HumanoidCfg.terrain):
         mesh_type = "plane"
@@ -100,8 +114,8 @@ class V0HHumanoidCfg(HumanoidCfg):
             "ShoulderYaw": 6,
             "Elbow": 5
         }
-        action_scale = 1.0  # Adjusted for V0H's torque control
-        decimation = 5      # Match MuJoCo timestep (0.001 * 5 = 0.005s control freq)
+        action_scale = 0.5
+        decimation = 20
 
     class sim(HumanoidCfg.sim):
         dt = 0.001  # Match MuJoCo timestep
