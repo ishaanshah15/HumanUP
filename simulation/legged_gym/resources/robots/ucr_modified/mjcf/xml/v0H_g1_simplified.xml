@@ -1,0 +1,386 @@
+<mujoco model="v0H">
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <!-- Compiler + Options                                                   -->
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <compiler angle="radian"/>
+  <option timestep="0.001"/>
+  <option integrator="implicit"/>
+
+  <visual>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <quality shadowsize="16384"/>
+    <global azimuth="220" elevation="-40"/>
+  </visual>
+
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <!-- 1. ONE COMBINED <default> BLOCK (torque‐control version)               -->
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <default>
+    <!-- 1.a – Generic geom defaults -->
+    <geom  solref="0.02 1" friction="0.6 0.1 0.02"/>
+
+    <!-- 1.b – Collision‐class geom defaults -->
+    <default class="collision">
+      <geom group="3" contype="1" conaffinity="1" condim="6" rgba="0 1 0 0.6"/>
+    </default>
+
+    <!-- 1.c – Visual‐class geom defaults -->
+    <default class="visual">
+      <geom group="0" type="mesh" contype="0" conaffinity="0"/>
+    </default>
+
+    <!-- 1.d – Generic joint defaults -->
+    <joint type="hinge" pos="0 0 0" limited="true"/>
+
+    <!-- 1.e – Class‐specific joint defaults, matched to G1 effort values where possible -->
+    <default class="hip_yaw">
+      <joint armature="0.3476425" damping="2.0" frictionloss="1.0"/>
+      <!-- G1 hip effort: 88 Nm -->
+      <motor ctrlrange="-88 88" gear="1"/>
+    </default>
+
+    <default class="hip_roll">
+      <joint armature="0.77158" damping="10.0" frictionloss="10.0"/>
+      <!-- G1 hip effort: 88 Nm -->
+      <motor ctrlrange="-88 88" gear="1"/>
+    </default>
+
+    <default class="hip_pitch">
+      <joint armature="0.77158" damping="10.0" frictionloss="10.0"/>
+      <!-- G1 hip effort: 88 Nm -->
+      <motor ctrlrange="-88 88" gear="1"/>
+    </default>
+
+    <default class="knee">
+      <joint armature="0.672132" damping="10.0" frictionloss="10.0"/>
+      <!-- G1 knee effort: 139 Nm -->
+      <motor ctrlrange="-139 139" gear="1"/>
+    </default>
+
+    <default class="ankle_pitch">
+      <joint armature="0.77158" damping="10.0" frictionloss="10.0"/>
+      <!-- G1 ankle effort: 50 Nm -->
+      <motor ctrlrange="-50 50" gear="1"/>
+    </default>
+
+    <default class="ankle_roll">
+      <joint armature="0.47767" damping="0.5" frictionloss="0.5"/>
+      <!-- G1 ankle effort: 50 Nm -->
+      <motor ctrlrange="-50 50" gear="1"/>
+    </default>
+
+    <default class="waist">
+      <joint armature="0.3476425" damping="2.0" frictionloss="1.0"/>
+      <!-- G1 waist effort: 88 Nm for yaw, 50 Nm for pitch/roll -->
+      <motor ctrlrange="-50 50" gear="1"/>
+    </default>
+
+    <default class="waist_yaw">
+      <joint armature="0.3476425" damping="2.0" frictionloss="1.0"/>
+      <!-- G1 waist yaw effort: 88 Nm -->
+      <motor ctrlrange="-88 88" gear="1"/>
+    </default>
+
+    <default class="shoulder_pitch">
+      <joint armature="0.8899648" damping="5.0" frictionloss="2.0"/>
+      <!-- G1 shoulder effort: 25 Nm -->
+      <motor ctrlrange="-25 25" gear="1"/>
+    </default>
+
+    <default class="shoulder_roll">
+      <joint armature="0.8899648" damping="5.0" frictionloss="2.0"/>
+      <!-- G1 shoulder effort: 25 Nm -->
+      <motor ctrlrange="-25 25" gear="1"/>
+    </default>
+
+    <default class="shoulder_yaw">
+      <joint armature="0.41815" damping="5.0" frictionloss="2.0"/>
+      <!-- G1 shoulder effort: 25 Nm -->
+      <motor ctrlrange="-25 25" gear="1"/>
+    </default>
+
+    <default class="elbow">
+      <joint armature="0.41815" damping="5.0" frictionloss="2.0"/>
+      <!-- G1 elbow effort: 25 Nm -->
+      <motor ctrlrange="-25 25" gear="1"/>
+    </default>
+  </default>
+
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <!-- 2. Asset Definitions (unchanged)                                       -->
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.1 0.2 0.3" rgb2="0.2 0.3 0.4" width="512" height="512"/>
+    <material name="grid" class="unused" texture="grid" texrepeat="1 1" texuniform="true" reflectance="0.1"/>
+
+    <texture type="2d" name="torso" file="../mesh/torso/silver.png"/>
+    <texture type="2d" name="pelvis" file="../mesh/pelvis/mattBlack.png"/>
+
+    <mesh name="torso" class="unused" file="../mesh/torso/torso_blue.obj" scale="1 1 1"/>
+    <mesh name="torsopitch" class="unused" file="../mesh/torso/TorsoPitchLink.obj" scale="1 1 1"/>
+    <mesh name="torsoyaw" class="unused" file="../mesh/torso/TorsoYawLink.obj" scale="1 1 1"/>
+    <mesh name="pelvis" class="unused" file="../mesh/pelvis/pelvis.obj" scale="1 1 1"/>
+    <mesh name="foot" class="unused" file="../mesh/foot/Footlink_Narrow_Col.obj" scale="1 1 1"/>
+    <mesh name="leftAnklePitchLink" class="unused" file="../mesh/legs/leftAnklePitchLink.obj" scale="1 1 1"/>
+    <mesh name="leftHipPitchLink" class="unused" file="../mesh/legs/leftHipPitchLink.obj" scale="1 1 1"/>
+    <mesh name="leftHipRollLink" class="unused" file="../mesh/legs/leftHipRollLink.obj" scale="1 1 1"/>
+    <mesh name="leftHipYawLink" class="unused" file="../mesh/legs/leftHipYawLink.obj" scale="1 1 1"/>
+    <mesh name="leftKneePitchLink" class="unused" file="../mesh/legs/leftKneePitchLink.obj" scale="1 1 1"/>
+    <mesh name="rightAnklePitchLink" class="unused" file="../mesh/legs/rightAnklePitchLink.obj" scale="1 1 1"/>
+    <mesh name="rightHipPitchLink" class="unused" file="../mesh/legs/rightHipPitchLink.obj" scale="1 1 1"/>
+    <mesh name="rightHipRollLink" class="unused" file="../mesh/legs/rightHipRollLink.obj" scale="1 1 1"/>
+    <mesh name="rightHipYawLink" class="unused" file="../mesh/legs/rightHipYawLink.obj" scale="1 1 1"/>
+    <mesh name="rightKneePitchLink" class="unused" file="../mesh/legs/rightKneePitchLink.obj" scale="1 1 1"/>
+    <mesh name="rightShoulderPitchLink" class="unused" file="../mesh/arms/rightShoulderPitchLink.obj" scale="1 1 1"/>
+    <mesh name="rightShoulderRollLink" class="unused" file="../mesh/arms/rightShoulderRollLink.obj" scale="1 1 1"/>
+    <mesh name="rightShoulderYawLink" class="unused" file="../mesh/arms/rightShoulderYawLink.obj" scale="1 1 1"/>
+    <mesh name="rightElbowLink" class="unused" file="../mesh/arms/rightElbowLink.obj" scale="1 1 1"/>
+    <mesh name="rightWristRollLink" class="unused" file="../mesh/arms/rightWristRollLink.obj" scale="1 1 1"/>
+    <mesh name="leftShoulderPitchLink" class="unused" file="../mesh/arms/leftShoulderPitchLink.obj" scale="1 1 1"/>
+    <mesh name="leftShoulderRollLink" class="unused" file="../mesh/arms/leftShoulderRollLink.obj" scale="1 1 1"/>
+    <mesh name="leftShoulderYawLink" class="unused" file="../mesh/arms/leftShoulderYawLink.obj" scale="1 1 1"/>
+    <mesh name="leftElbowLink" class="unused" file="../mesh/arms/leftElbowLink.obj" scale="1 1 1"/>
+
+    <material name="torso" texture="torso"/>
+    <material name="pelvis" texture="pelvis"/>
+    <material name="mattBlack" texture="pelvis"/>
+    <material name="grey" rgba="0.4 0.4 0.4 1"/>
+    <material name="deepgray" rgba="0.5 0.5 0.5 1"/>
+    <material name="blue" rgba="0 0.1 1 1"/>
+    <material name="ctorange" rgba="1.0 0.431 0.1176 1"/>
+  </asset>
+
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <!-- 3. Actuators (ordered to match G1: legs, waist, arms)                 -->
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <actuator>
+    <!-- Left Leg -->
+    <motor class="hip_pitch" name="left_hip_pitch" joint="left_hip_pitch_joint"/>
+    <motor class="hip_roll" name="left_hip_roll" joint="left_hip_roll_joint"/>
+    <motor class="hip_yaw" name="left_hip_yaw" joint="left_hip_yaw_joint"/>
+    <motor class="knee" name="left_knee" joint="left_knee_joint"/>
+    <motor class="ankle_pitch" name="left_ankle_pitch" joint="left_ankle_pitch_joint"/>
+    <motor class="ankle_roll" name="left_ankle_roll" joint="left_ankle_roll_joint"/>
+
+    <!-- Right Leg -->
+    <motor class="hip_pitch" name="right_hip_pitch" joint="right_hip_pitch_joint"/>
+    <motor class="hip_roll" name="right_hip_roll" joint="right_hip_roll_joint"/>
+    <motor class="hip_yaw" name="right_hip_yaw" joint="right_hip_yaw_joint"/>
+    <motor class="knee" name="right_knee" joint="right_knee_joint"/>
+    <motor class="ankle_pitch" name="right_ankle_pitch" joint="right_ankle_pitch_joint"/>
+    <motor class="ankle_roll" name="right_ankle_roll" joint="right_ankle_roll_joint"/>
+
+    <!-- Waist -->
+    <motor class="waist_yaw" name="waist_yaw" joint="waist_yaw_joint"/>
+    <motor class="waist" name="waist_roll" joint="waist_roll_joint"/>
+    <motor class="waist" name="waist_pitch" joint="waist_pitch_joint"/>
+
+    <!-- Left Arm -->
+    <motor class="shoulder_pitch" name="left_shoulder_pitch" joint="left_shoulder_pitch_joint"/>
+    <motor class="shoulder_roll" name="left_shoulder_roll" joint="left_shoulder_roll_joint"/>
+    <motor class="shoulder_yaw" name="left_shoulder_yaw" joint="left_shoulder_yaw_joint"/>
+    <motor class="elbow" name="left_elbow" joint="left_elbow_joint"/>
+
+    <!-- Right Arm -->
+    <motor class="shoulder_pitch" name="right_shoulder_pitch" joint="right_shoulder_pitch_joint"/>
+    <motor class="shoulder_roll" name="right_shoulder_roll" joint="right_shoulder_roll_joint"/>
+    <motor class="shoulder_yaw" name="right_shoulder_yaw" joint="right_shoulder_yaw_joint"/>
+    <motor class="elbow" name="right_elbow" joint="right_elbow_joint"/>
+  </actuator>
+
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <!-- 4. Worldbody + Floor + Robot Body (renamed joints to match G1)        -->
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <worldbody>
+    <light directional="true" diffuse=".8 .8 .8" pos="0 0 10" dir="0 0 -10" ambient="0.5 0.5 0.5"/>
+    <geom name="floor" class="unused" type="plane" condim="6" size="0 0 0.05" material="grid" pos="0 0 0"/>
+
+    <body name="pelvis" pos="0 0 0.95">
+      <!-- visual only -->
+      <geom name="pelvis_visual" class="visual" type="mesh" mesh="pelvis"/>
+      <!-- replace mesh collision with a simple box approximation -->
+      <geom name="pelvis_col_prim" class="collision" type="box" size="0.2 0.15 0.1" pos="0 0 -0.05"/>
+
+      <!-- Left leg (DOF 0-5) -->
+      <body name="left_hip_pitch_link" pos="0 0.115 -0.1695">
+        <geom class="visual" type="mesh" mesh="leftHipYawLink"/>
+        <!-- sphere collision around hip joint -->
+        <geom class="collision" type="sphere" size="0.05"/>
+
+        <body name="left_hip_roll_link" pos="0.03 0 0">
+          <geom class="visual" type="mesh" mesh="leftHipRollLink"/>
+          <!-- box collision under thigh -->
+          <geom class="collision" type="box" size="0.08 0.05 0.2" pos="0 0 -0.1"/>
+
+          <body name="left_hip_yaw_link">
+            <geom class="visual" type="mesh" mesh="leftHipPitchLink"/>
+            <!-- cylinder collision for yaw link -->
+            <geom class="collision" type="cylinder" size="0.06 0.16" pos="0 0.14 -0.16"/>
+
+            <body name="left_knee_link" pos="0 0.025 -0.3">
+              <geom class="visual" type="mesh" mesh="leftKneePitchLink"/>
+              <!-- cylinder collision for shin -->
+              <geom class="collision" type="cylinder" size="0.04 0.32" pos="0 0 -0.16"/>
+
+              <body name="left_ankle_pitch_link" pos="0 0 -0.3">
+                <geom class="visual" type="mesh" mesh="leftAnklePitchLink"/>
+
+                <body name="left_ankle_roll_link" pos="0 0 -0.07">
+                  <geom class="visual" type="mesh" mesh="foot"/>
+                  <!-- two cylinder collisions for foot underside -->
+                  <geom class="collision" type="cylinder" size="0.02 0.16" pos="0.05 0  -0.11" euler="1.5708 0 0"/>
+                  <geom class="collision" type="cylinder" size="0.02 0.16" pos="-0.05 0 -0.11" euler="1.5708 0 0"/>
+                  <site name="leftFoot_contact" type="box" size="0.16 0.05 0.02" pos="0.05 0 -0.11" rgba="1 0 0 0.1"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+
+      <!-- Right leg (DOF 6-11) mirrored primitives -->
+      <body name="right_hip_pitch_link" pos="0 -0.115 -0.1695">
+        <geom class="visual" type="mesh" mesh="rightHipYawLink"/>
+        <geom class="collision" type="sphere" size="0.05"/>
+
+        <body name="right_hip_roll_link" pos="0.03 0 0">
+          <geom class="visual" type="mesh" mesh="rightHipRollLink"/>
+          <geom class="collision" type="box" size="0.08 0.05 0.2" pos="0 0 -0.1"/>
+
+          <body name="right_hip_yaw_link">
+            <geom class="visual" type="mesh" mesh="rightHipPitchLink"/>
+            <geom class="collision" type="cylinder" size="0.06 0.16" pos="0 -0.14 -0.16"/>
+
+            <body name="right_knee_link" pos="0 -0.025 -0.3">
+              <geom class="visual" type="mesh" mesh="rightKneePitchLink"/>
+              <geom class="collision" type="cylinder" size="0.04 0.32" pos="0 0 -0.16"/>
+
+              <body name="right_ankle_pitch_link" pos="0 0 -0.3">
+                <geom class="visual" type="mesh" mesh="rightAnklePitchLink"/>
+
+                <body name="right_ankle_roll_link" pos="0 0 -0.07">
+                  <geom class="visual" type="mesh" mesh="foot"/>
+                  <geom class="collision" type="cylinder" size="0.02 0.16" pos="0.05 0 -0.11" euler="1.5708 0 0"/>
+                  <geom class="collision" type="cylinder" size="0.02 0.16" pos="-0.05 0 -0.11" euler="1.5708 0 0"/>
+                  <site name="rightFoot_contact" type="box" size="0.16 0.05 0.02" pos="0.05 0 -0.11" rgba="1 0 0 0.1"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+
+      <!-- Torso with primitive collision cylinder -->
+      <body name="waist_roll_link" pos="0.05 0 0">
+        <geom name="torsopitch_visual" class="visual" type="mesh" mesh="torsopitch"/>
+        <!-- tall cylinder around torso -->
+        <geom name="torso_col_prim" class="collision" type="cylinder" size="0.08 0.35" pos="0 0 0.175"/>
+      </body>
+
+      <!-- arms and sensors unchanged -->
+    </body>
+  </worldbody>
+  
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <!-- 5. Sensor Definitions (updated with G1 naming convention)              -->
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <sensor>
+    <!-- Joint position sensors -->
+    <actuatorpos name="left_hip_pitch_pos"       actuator="left_hip_pitch"/>
+    <actuatorpos name="left_hip_roll_pos"        actuator="left_hip_roll"/>
+    <actuatorpos name="left_hip_yaw_pos"         actuator="left_hip_yaw"/>
+    <actuatorpos name="left_knee_pos"            actuator="left_knee"/>
+    <actuatorpos name="left_ankle_pitch_pos"     actuator="left_ankle_pitch"/>
+    <actuatorpos name="left_ankle_roll_pos"      actuator="left_ankle_roll"/>
+    
+    <actuatorpos name="right_hip_pitch_pos"      actuator="right_hip_pitch"/>
+    <actuatorpos name="right_hip_roll_pos"       actuator="right_hip_roll"/>
+    <actuatorpos name="right_hip_yaw_pos"        actuator="right_hip_yaw"/>
+    <actuatorpos name="right_knee_pos"           actuator="right_knee"/>
+    <actuatorpos name="right_ankle_pitch_pos"    actuator="right_ankle_pitch"/>
+    <actuatorpos name="right_ankle_roll_pos"     actuator="right_ankle_roll"/>
+    
+    <actuatorpos name="waist_yaw_pos"            actuator="waist_yaw"/>
+    <actuatorpos name="waist_roll_pos"           actuator="waist_roll"/>
+    <actuatorpos name="waist_pitch_pos"          actuator="waist_pitch"/>
+    
+    <actuatorpos name="left_shoulder_pitch_pos"  actuator="left_shoulder_pitch"/>
+    <actuatorpos name="left_shoulder_roll_pos"   actuator="left_shoulder_roll"/>
+    <actuatorpos name="left_shoulder_yaw_pos"    actuator="left_shoulder_yaw"/>
+    <actuatorpos name="left_elbow_pos"           actuator="left_elbow"/>
+    
+    <actuatorpos name="right_shoulder_pitch_pos" actuator="right_shoulder_pitch"/>
+    <actuatorpos name="right_shoulder_roll_pos"  actuator="right_shoulder_roll"/>
+    <actuatorpos name="right_shoulder_yaw_pos"   actuator="right_shoulder_yaw"/>
+    <actuatorpos name="right_elbow_pos"          actuator="right_elbow"/>
+
+    <!-- Joint velocity sensors -->
+    <actuatorvel name="left_hip_pitch_vel"       actuator="left_hip_pitch"/>
+    <actuatorvel name="left_hip_roll_vel"        actuator="left_hip_roll"/>
+    <actuatorvel name="left_hip_yaw_vel"         actuator="left_hip_yaw"/>
+    <actuatorvel name="left_knee_vel"            actuator="left_knee"/>
+    <actuatorvel name="left_ankle_pitch_vel"     actuator="left_ankle_pitch"/>
+    <actuatorvel name="left_ankle_roll_vel"      actuator="left_ankle_roll"/>
+    
+    <actuatorvel name="right_hip_pitch_vel"      actuator="right_hip_pitch"/>
+    <actuatorvel name="right_hip_roll_vel"       actuator="right_hip_roll"/>
+    <actuatorvel name="right_hip_yaw_vel"        actuator="right_hip_yaw"/>
+    <actuatorvel name="right_knee_vel"           actuator="right_knee"/>
+    <actuatorvel name="right_ankle_pitch_vel"    actuator="right_ankle_pitch"/>
+    <actuatorvel name="right_ankle_roll_vel"     actuator="right_ankle_roll"/>
+    
+    <actuatorvel name="waist_yaw_vel"            actuator="waist_yaw"/>
+    <actuatorvel name="waist_roll_vel"           actuator="waist_roll"/>
+    <actuatorvel name="waist_pitch_vel"          actuator="waist_pitch"/>
+    
+    <actuatorvel name="left_shoulder_pitch_vel"  actuator="left_shoulder_pitch"/>
+    <actuatorvel name="left_shoulder_roll_vel"   actuator="left_shoulder_roll"/>
+    <actuatorvel name="left_shoulder_yaw_vel"    actuator="left_shoulder_yaw"/>
+    <actuatorvel name="left_elbow_vel"           actuator="left_elbow"/>
+    
+    <actuatorvel name="right_shoulder_pitch_vel" actuator="right_shoulder_pitch"/>
+    <actuatorvel name="right_shoulder_roll_vel"  actuator="right_shoulder_roll"/>
+    <actuatorvel name="right_shoulder_yaw_vel"   actuator="right_shoulder_yaw"/>
+    <actuatorvel name="right_elbow_vel"          actuator="right_elbow"/>
+
+    <!-- Joint force sensors -->
+    <actuatorfrc name="left_hip_pitch_frc"       actuator="left_hip_pitch"/>
+    <actuatorfrc name="left_hip_roll_frc"        actuator="left_hip_roll"/>
+    <actuatorfrc name="left_hip_yaw_frc"         actuator="left_hip_yaw"/>
+    <actuatorfrc name="left_knee_frc"            actuator="left_knee"/>
+    <actuatorfrc name="left_ankle_pitch_frc"     actuator="left_ankle_pitch"/>
+    <actuatorfrc name="left_ankle_roll_frc"      actuator="left_ankle_roll"/>
+    
+    <actuatorfrc name="right_hip_pitch_frc"      actuator="right_hip_pitch"/>
+    <actuatorfrc name="right_hip_roll_frc"       actuator="right_hip_roll"/>
+    <actuatorfrc name="right_hip_yaw_frc"        actuator="right_hip_yaw"/>
+    <actuatorfrc name="right_knee_frc"           actuator="right_knee"/>
+    <actuatorfrc name="right_ankle_pitch_frc"    actuator="right_ankle_pitch"/>
+    <actuatorfrc name="right_ankle_roll_frc"     actuator="right_ankle_roll"/>
+    
+    <actuatorfrc name="waist_yaw_frc"            actuator="waist_yaw"/>
+    <actuatorfrc name="waist_roll_frc"           actuator="waist_roll"/>
+    <actuatorfrc name="waist_pitch_frc"          actuator="waist_pitch"/>
+    
+    <actuatorfrc name="left_shoulder_pitch_frc"  actuator="left_shoulder_pitch"/>
+    <actuatorfrc name="left_shoulder_roll_frc"   actuator="left_shoulder_roll"/>
+    <actuatorfrc name="left_shoulder_yaw_frc"    actuator="left_shoulder_yaw"/>
+    <actuatorfrc name="left_elbow_frc"           actuator="left_elbow"/>
+    
+    <actuatorfrc name="right_shoulder_pitch_frc" actuator="right_shoulder_pitch"/>
+    <actuatorfrc name="right_shoulder_roll_frc"  actuator="right_shoulder_roll"/>
+    <actuatorfrc name="right_shoulder_yaw_frc"   actuator="right_shoulder_yaw"/>
+    <actuatorfrc name="right_elbow_frc"          actuator="right_elbow"/>
+
+    <!-- IMU on pelvis -->
+    <framepos name="pos_pelvis" objtype="site" noise="0.0" objname="imu_pelvis"/>
+    <framequat name="ori_pelvis" objtype="site" noise="0.0" objname="imu_pelvis"/>
+    <velocimeter name="linvel_pelvis" noise="0.0" site="imu_pelvis"/>
+    <gyro name="angvel_pelvis" noise="0.0" site="imu_pelvis"/>
+    <accelerometer name="linacc_pelvis" noise="0.0" site="imu_pelvis"/>
+
+    <!-- Foot contact -->
+    <touch name="left_foot_contact"  site="leftFoot_contact"/>
+    <touch name="right_foot_contact" site="rightFoot_contact"/>
+  </sensor>
+</mujoco>
