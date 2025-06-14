@@ -204,7 +204,7 @@
       <!-- Left leg (DOF 0-5) -->
       <body name="left_hip_pitch_link" pos="0 0.115 -0.1695">
         <inertial pos="-0.061 -0.00091 0.00301" quat="0.95233 0.0550631 -0.266837 -0.137233" mass="2.9525" diaginertia="0.00540505 0.00473386 0.00413109"/>
-        <joint class="hip_pitch" name="left_hip_pitch_joint" pos="0 0 0" axis="0 1 0" range="-1.58 1.58"/>
+        <joint class="hip_pitch" name="left_hip_pitch_joint" pos="0 0 0" axis="0 1 0" range="-2.5307 2.8798"/>
         <geom name="leftHipYawLink_visual" class="visual" type="mesh" pos="0 0 0" euler="0 -0 0" mesh="leftHipYawLink"/>
         <!-- CHANGED: Replace sphere with cylinder for better collision -->
         <geom name="left_hip_pitch_collision" class="collision" type="cylinder" size="0.05 0.06" pos="0 0 0"/>
@@ -212,12 +212,12 @@
 
         <body name="left_hip_roll_link" pos="0.03 0 0">
           <inertial pos="-0.018719 0.028408 1.4e-05" quat="0.673556 0.673556 0.215228 0.215228" mass="0.4415" diaginertia="0.00119365 0.001089 0.00066235"/>
-          <joint class="hip_roll" name="left_hip_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.5236 0.4695"/>
+          <joint class="hip_roll" name="left_hip_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.5236 2.9671"/>
           <geom name="leftHipRollLink_visual" class="visual" type="mesh" pos="0 0 0" euler="0 -0 0" mesh="leftHipRollLink" material="mattBlack"/>
 
           <body name="left_hip_yaw_link">
             <inertial pos="-2e-05 0.11103 -0.10304" quat="0.706641 0.0140271 -0.0140429 0.707294" mass="8.3971" diaginertia="0.0961902 0.088623 0.0186018"/>
-            <joint class="hip_yaw" name="left_hip_yaw_joint" pos="0 0 0" axis="0 0 1" range="-1.58 1.58"/>
+            <joint class="hip_yaw" name="left_hip_yaw_joint" pos="0 0 0" axis="0 0 1" range="-2.7576 2.7576"/>
             <geom name="leftHipPitchLink_visual" class="visual" type="mesh" pos="0 0 0" euler="0 -0 0" mesh="leftHipPitchLink"/>
             <!-- CHANGED: Optimize existing cylinder collision -->
             <geom name="left_hip_yaw_collision" class="collision" type="cylinder" size="0.05 0.12" pos="0 0.12 -0.15"/>
@@ -253,7 +253,7 @@
       <!-- Right leg (DOF 6-11) -->
       <body name="right_hip_pitch_link" pos="0 -0.115 -0.1695">
         <inertial pos="-0.061 0.00091 0.00301" quat="0.95233 -0.0550631 -0.266837 0.137233" mass="2.9525" diaginertia="0.00540505 0.00473386 0.00413109"/>
-        <joint class="hip_pitch" name="right_hip_pitch_joint" pos="0 0 0" axis="0 1 0" range="-1.58 1.58"/>
+        <joint class="hip_pitch" name="right_hip_pitch_joint" pos="0 0 0" axis="0 1 0" range="-2.5307 2.8798"/>
         <geom name="rightHipYawLink_visual" class="visual" type="mesh" pos="0 0 0" euler="0 -0 0" mesh="rightHipYawLink"/>
         <!-- CHANGED: Replace sphere with cylinder for better collision -->
         <geom name="right_hip_pitch_collision" class="collision" type="cylinder" size="0.05 0.06" pos="0 0 0"/>
@@ -261,12 +261,12 @@
 
         <body name="right_hip_roll_link" pos="0.03 0 0">
           <inertial pos="-0.018719 -0.028408 1.4e-05" quat="0.673556 0.673556 -0.215228 -0.215228" mass="0.4415" diaginertia="0.00119365 0.001089 0.00066235"/>
-          <joint class="hip_roll" name="right_hip_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.4695 0.5236"/>
+          <joint class="hip_roll" name="right_hip_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.9671 0.5236"/>
           <geom name="rightHipRollLink_visual" class="visual" type="mesh" pos="0 0 0" euler="0 -0 0" mesh="rightHipRollLink" material="mattBlack"/>
 
           <body name="right_hip_yaw_link">
             <inertial pos="2e-05 -0.11103 -0.10304" quat="0.706641 -0.0140271 0.0140429 0.707294" mass="8.3971" diaginertia="0.0961902 0.088623 0.0186018"/>
-            <joint class="hip_yaw" name="right_hip_yaw_joint" pos="0 0 0" axis="0 0 1" range="-1.58 1.58"/>
+            <joint class="hip_yaw" name="right_hip_yaw_joint" pos="0 0 0" axis="0 0 1" range="-2.7576 2.7576"/>
             <geom name="rightHipPitchLink_visual" class="visual" type="mesh" pos="0 0 0" euler="0 -0 0" mesh="rightHipPitchLink"/>
             <!-- CHANGED: Optimize existing cylinder collision -->
             <geom name="right_hip_yaw_collision" class="collision" type="cylinder" size="0.05 0.12" pos="0 -0.12 -0.15"/>
@@ -302,12 +302,12 @@
       <!-- Waist (DOF 12-14) -->
       <body name="waist_yaw_link" pos="0 0 0.1015">
         <inertial pos="0.0153374 0 -0.0376228" quat="0.0220714 0.798247 0.00912114 0.601856" mass="0.7907" diaginertia="0.00261498 0.0023003 0.00112455"/>
-        <joint class="waist_yaw" name="waist_yaw_joint" pos="0 0 0" axis="0 0 1" range="-1.58 1.58"/>
+        <joint class="waist_yaw" name="waist_yaw_joint" pos="0 0 0" axis="0 0 1" range="-2.618 2.618"/>
         <geom name="torsoyaw_visual" class="visual" type="mesh" pos="0 0 0" euler="0 -0 0" mesh="torsoyaw" material="mattBlack"/>
 
         <body name="waist_roll_link" pos="0.05 0 0">
           <inertial pos="6.183e-05 0 6.183e-05" quat="0.5 0.5 -0.5 0.5" mass="0.0967" diaginertia="2.601e-05 1.492e-05 1.492e-05"/>
-          <joint class="waist" name="waist_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.1396 0.1396"/>
+          <joint class="waist" name="waist_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.5236 0.5236"/>
           <geom name="torsopitch_visual" class="visual" type="mesh" pos="0 0 0" euler="0 -0 0" mesh="torsopitch"/>
 
           <body name="torso_link" pos="0 0 0">
