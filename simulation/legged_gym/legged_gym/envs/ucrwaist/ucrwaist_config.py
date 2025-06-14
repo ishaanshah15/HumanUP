@@ -131,7 +131,7 @@ class V0HHumanoidCfg(HumanoidCfg):
         clip_actions = 5
 
     class asset(HumanoidCfg.asset):
-        file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/ucr_modified/mjcf/xml/v0H_g1.xml"
+        file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/ucr_modified/mjcf/xml/v0H_g1_simplified.xml"
         # for both joint and link name
         torso_name: str = "torso_link"  # humanoid pelvis part
         chest_name: str = "torso_link"  # humanoid chest part
