@@ -101,7 +101,7 @@ class V0HWaistRollHumanUPCfg(HumanoidCfg):
 
     class control(HumanoidCfg.control):
         stiffness = {
-            "hip_yaw": 120,      # Adjusted for v0H actuator specs
+            "hip_yaw": 150,      # Adjusted for v0H actuator specs
             "hip_roll": 150,
             "hip_pitch": 200,
             "knee": 250,         # Higher for v0H's stronger knee actuators
@@ -318,7 +318,7 @@ class V0HWaistRollHumanUPCfg(HumanoidCfg):
             ang_vel_yaw = [-0.6, 0.6]  # min max [rad/s]
 
 
-class G1WaistRollHumanUPCfgPPO(HumanoidCfgPPO):
+class V0HWaistRollHumanUPCfgPPO(HumanoidCfgPPO):
     seed = 1
 
     class runner(HumanoidCfgPPO.runner):

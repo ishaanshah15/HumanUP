@@ -54,15 +54,15 @@ from legged_gym.gym_utils.math import quat_apply_yaw, wrap_to_pi, torch_rand_sqr
 from legged_gym.gym_utils.helpers import class_to_dict
 from legged_gym.envs.base.humanoid import Humanoid
 from legged_gym.envs.base.humanoid_config import HumanoidCfg, HumanoidCfgPPO
-from legged_gym.envs.g1waist.g1waist_up_config import G1WaistHumanUPCfg
+from .ucrwaistroll.ucrwaistroll_up_config import V0HWaistRollHumanUPCfg
 
 def quat_distance_rad(q1, q2):
     dot = torch.sum(q1 * q2, dim=-1)
     dot = torch.clamp(dot, -1.0, 1.0)
-    return 2 * torch.acos(dot)  # rad
+    return 2 * torch.acos(dot)  # radians
 
 class V0HWaistRollHumanUP(Humanoid):
-    def __init__(self, cfg: G1WaistHumanUPCfg, sim_params, physics_engine, sim_device, headless):
+    def __init__(self, cfg: V0HWaistRollHumanUPCfg, sim_params, physics_engine, sim_device, headless):
         """Parses the provided config file,
             calls create_sim() (which creates, simulation, terrain and environments),
             initilizes pytorch buffers used during training
@@ -100,13 +100,23 @@ class V0HWaistRollHumanUP(Humanoid):
             1.0610e-04, -4.5519e-05,  2.4261e-03,
             5.6199e-03, -8.3706e-03, -1.0773e-03]).to(sim_device).repeat(self.num_envs, 1)
         self.initial_root_states_face_down = torch.tensor([ 
-            8.6570e-03,  5.0515e-04,  5.6526e-02+0.02, 
-            -0.0175, -0.8659, -0.0098, -0.4999,
-            1.0610e-04, -4.5519e-05,  2.4261e-03,
-            5.6199e-03, -8.3706e-03, -1.0773e-03]).to(sim_device).repeat(self.num_envs, 1)
-        self.initial_dof_pos = torch.tensor([-0.3600,  0.2481,  1.6115, -0.0647, -0.8612, -0.1226, -0.3878,  0.3584,
-            1.5328,  0.1519, -0.8651,  0.2362, -0.0357,  0.0685, -0.5200,  0.4665,
-            0.8218,  0.4253,  1.2972,  0.1429, -1.0324, -0.4241,  1.4075]).to(sim_device).repeat(self.num_envs, 1)
+            0.0,  0.0,  0.3, 
+            0, 0.7071, 0, 0.7071,
+            0.0, 0.0,  0.0,
+            0.0, 0.0, 0.0]).to(sim_device).repeat(self.num_envs, 1)
+        
+        self.initial_dof_pos = torch.tensor([
+            # Torso: torsoYaw, torsoPitch, torsoRoll
+            0.0, 0.0, 0.0,
+            # Right arm: rightShoulderPitch, rightShoulderRoll, rightShoulderYaw, rightElbow  
+            0.0, 0.0, 0.0, 0.0,
+            # Left arm: leftShoulderPitch, leftShoulderRoll, leftShoulderYaw, leftElbow
+            0.0, 0.0, 0.0, 0.0,
+            # Right leg: rightHipYaw, rightHipRoll, rightHipPitch, rightKneePitch, rightAnklePitch, rightAnkleRoll
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            # Left leg: leftHipYaw, leftHipRoll, leftHipPitch, leftKneePitch, leftAnklePitch, leftAnkleRoll  
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]).to(sim_device).repeat(self.num_envs, 1)
         
         self.left_dof_indices = torch.tensor([0, 1, 2, 3, 4, 5, 15, 16, 17, 18], device=self.device, dtype=torch.long)
         self.right_dof_indices = torch.tensor([6, 7, 8, 9, 10, 11, 19, 20, 21, 22], device=self.device, dtype=torch.long)
@@ -189,7 +199,7 @@ class V0HWaistRollHumanUP(Humanoid):
             robot_asset, self.cfg.asset.chest_name
         )
         self.head_idx = self.gym.find_asset_rigid_body_index(
-            robot_asset, self.cfg.asset.forehead_name
+            robot_asset, self.cfg.asset.torso_name
         )
 
         for s in self.cfg.asset.feet_bodies:
