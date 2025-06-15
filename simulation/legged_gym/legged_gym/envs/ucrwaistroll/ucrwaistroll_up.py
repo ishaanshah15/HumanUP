@@ -54,7 +54,7 @@ from legged_gym.gym_utils.math import quat_apply_yaw, wrap_to_pi, torch_rand_sqr
 from legged_gym.gym_utils.helpers import class_to_dict
 from legged_gym.envs.base.humanoid import Humanoid
 from legged_gym.envs.base.humanoid_config import HumanoidCfg, HumanoidCfgPPO
-from .ucrwaistroll.ucrwaistroll_up_config import V0HWaistRollHumanUPCfg
+from legged_gym.envs.ucrwaistroll.ucrwaistroll_up_config import V0HWaistRollHumanUPCfg
 
 def quat_distance_rad(q1, q2):
     dot = torch.sum(q1 * q2, dim=-1)
