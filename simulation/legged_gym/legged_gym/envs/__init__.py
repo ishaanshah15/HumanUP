@@ -41,6 +41,8 @@ from .g1waist.g1waist_up_config import G1WaistHumanUPCfg, G1WaistHumanUPCfgPPO
 from .g1waist.g1waist_up import G1WaistHumanUP
 from .ucrwaist.ucrwaist_config import V0HHumanoidCfg, V0HHumanoidCfgPPO
 from .ucrwaist.ucrwaist_up import V0HHumanoid
+from .ucrwaistroll.ucrwaistroll_up_config import V0HWaistRollHumanUPCfg,V0HWaistRollHumanUPCfgPPO
+from .ucrwaistroll.ucrwaistroll_up import V0HWaistRollHumanUP
 from .g1waistroll.g1waistroll_up_config import G1WaistRollHumanUPCfg, G1WaistRollHumanUPCfgPPO
 from .g1waistroll.g1waistroll_up import G1WaistRollHumanUP
 
@@ -63,3 +65,5 @@ task_registry.register("g1waistroll_up", G1WaistRollHumanUP, G1WaistRollHumanUPC
 task_registry.register("g1waistroll_track", G1WaistRollTrack, G1WaistRollTrackCfg(), G1WaistRollTrackCfgPPO())
 
 task_registry.register("ucrwaist_up", V0HHumanoid, V0HHumanoidCfg(), V0HHumanoidCfgPPO())
+
+task_registry.register("ucrwaistroll_up", V0HWaistRollHumanUP, V0HWaistRollHumanUPCfg(), V0HWaistRollHumanUPCfgPPO())
