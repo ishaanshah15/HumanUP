@@ -9,9 +9,10 @@ python train.py --task "${task_name}" \
                 --proj_name "${proj_name}" \
                 --exptid "${exptid}" \
                 --device "${3}" \
-                --num_envs 4096 \
+                --num_envs 512 \
                 --headless \
                 --fix_action_std \
+                # --resume
                 # --debug
                 # --resume \
                 # --resumeid XXX
